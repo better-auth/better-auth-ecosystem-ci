@@ -1,0 +1,45 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ opened, synchronize ]
+  merge_group:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      better_call_version:
+        required: true
+        type: string
+      better_auth_version:
+        required: false
+        type: string
+
+jobs:
+  test:
+    name: Test on (Node ${{ matrix.version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [ 24.x, 22.x, 20.x ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || '' }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.version }}
+          cache: ${{ !inputs.better_auth_version && 'pnpm' || '' }}
+      - if: ${{ inputs.better_auth_version }}
+        run: |
+          pnpm -r update better-auth@${{ inputs.better_auth_version }}
+      - if: ${{ inputs.better_call_version }}
+        run: |
+          pnpm -r update better-call@${{ inputs.better_call_version }}
+      - run: pnpm install
+      - run: pnpm run build
